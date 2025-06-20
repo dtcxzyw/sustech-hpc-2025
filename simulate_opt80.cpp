@@ -1,7 +1,6 @@
 #include <complex>
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
 #include <omp.h>
 #include <utility>
 #include <vector>
@@ -147,7 +146,6 @@ struct Gate {
 void simulate(size_t N, const char *Gates, std::complex<double> &Alpha,
               std::complex<double> &Beta) {
   int NumThreads = omp_get_max_threads();
-  std::cerr << "Using " << NumThreads << " threads.\n";
   size_t ChunkSize = N / NumThreads;
 
   std::vector<Gate> GatesVec(NumThreads);
@@ -156,9 +154,10 @@ void simulate(size_t N, const char *Gates, std::complex<double> &Alpha,
   for (int I = 0; I < NumThreads; ++I) {
     Gate G;
     size_t Start = I * ChunkSize;
-    size_t End = Start + ChunkSize;
-    for (size_t J = Start; J < End; ++J) {
-      switch (Gates[J]) {
+    const char *GatesPtr =
+        (const char *)__builtin_assume_aligned(Gates + Start, 8);
+    for (size_t J = 0; J < ChunkSize; ++J) {
+      switch (GatesPtr[J]) {
       case 'H':
         G.applyH();
         break;

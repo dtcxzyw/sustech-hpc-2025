@@ -31,7 +31,7 @@ $H\ket{0} = \frac{1}{\sqrt{2}}(\ket{0} + \ket{1})$。
 你需要实现一个C++函数，对应签名如下：
 ```cpp
 /// \param N 量子门的数量，保证是2的幂
-/// \param Gates 量子门的字符串表示，长度为N。每个字符表示一个量子门，只可能为'H', 'X', 'Y', 'Z', 'S'中的一个，分别表示Hadamard门、Pauli-X门、Pauli-Y门、Pauli-Z门和Phase门。
+/// \param Gates 量子门的字符串表示，长度为N，8字节对齐。每个字符表示一个量子门，只可能为'H', 'X', 'Y', 'Z', 'S'中的一个，分别表示Hadamard门、Pauli-X门、Pauli-Y门、Pauli-Z门和Phase门。
 /// \param Alpha 输出参数，表示最终量子态的系数$\alpha$
 /// \param Beta 输出参数，表示最终量子态的系数$\beta$
 void simulate(size_t N, const char *Gates, std::complex<double> &Alpha, std::complex<double> &Beta) {

@@ -1,3 +1,4 @@
+#include <atomic>
 #include <chrono>
 #include <complex>
 #include <cstdio>
@@ -26,9 +27,13 @@ int main(int argc, char *argv[]) {
 
   std::complex<double> Alpha = {}, Beta = {};
 
+  std::atomic_signal_fence(std::memory_order_acq_rel);
   auto start = std::chrono::high_resolution_clock::now();
+  std::atomic_signal_fence(std::memory_order_acq_rel);
   simulate(N, Gates.data(), Alpha, Beta);
+  std::atomic_signal_fence(std::memory_order_acq_rel);
   auto end = std::chrono::high_resolution_clock::now();
+  std::atomic_signal_fence(std::memory_order_acq_rel);
 
   std::chrono::duration<double, std::milli> duration = end - start;
   printf("Final state: alpha = %.12f + %.12fi, beta = %.12f + %.12fi\n",
