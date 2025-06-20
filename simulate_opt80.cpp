@@ -38,7 +38,7 @@ struct Number {
     }
   }
 
-  // Compute (A + B) / sqrt(2)
+  // // Compute (A + B) / sqrt(2)
   Number addDivSqrt2(Number RHS) const {
     NumberType Sum = Val + RHS.Val;
     if (Val == Zero || RHS.Val == Zero)
@@ -76,9 +76,6 @@ struct Complex {
   static constexpr Complex One() { return {Number::PosOne}; }
   Complex operator-() const { return {-Real, -Imag}; }
   Complex multiI() const { return {-Imag, Real}; }
-  Complex addDivSqrt2(Complex RHS) const {
-    return {Real.addDivSqrt2(RHS.Real), Imag.addDivSqrt2(RHS.Imag)};
-  }
   std::complex<double> materialize() const {
     return {Real.materialize(), Imag.materialize()};
   }
@@ -90,10 +87,12 @@ struct Qubit {
   void applyH() {
     // Alpha = (Alpha + Beta) / sqrt(2)
     // Beta = (Alpha - Beta) / sqrt(2)
-    auto NewAlpha = Alpha.addDivSqrt2(Beta);
-    auto NewBeta = Alpha.addDivSqrt2(-Beta);
-    Alpha = NewAlpha;
-    Beta = NewBeta;
+    auto NewAlphaReal = Alpha.Real.addDivSqrt2(Beta.Real);
+    auto NewAlphaImag = Alpha.Imag.addDivSqrt2(Beta.Imag);
+    auto NewBetaReal = Alpha.Real.addDivSqrt2(-Beta.Real);
+    auto NewBetaImag = Alpha.Imag.addDivSqrt2(-Beta.Imag);
+    Alpha = {NewAlphaReal, NewAlphaImag};
+    Beta = {NewBetaReal, NewBetaImag};
   }
   void applyX() { std::swap(Alpha, Beta); }
   void applyY() {
