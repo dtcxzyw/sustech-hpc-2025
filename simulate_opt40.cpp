@@ -137,28 +137,6 @@ struct Qubit {
   void applyS() { Beta = Beta.multiI(); }
 };
 
-// Avoid using double to represent the qubit.
-// using namespace std::complex_literals;
-// constexpr double InvSqrt2 = 0.70710678118654752440084436210485; // 1/sqrt(2)
-// struct Qubit {
-//   std::complex<double> Alpha, Beta;
-//   void applyH() {
-//     auto NewAlpha = (Alpha + Beta) * InvSqrt2;
-//     auto NewBeta = (Alpha - Beta) * InvSqrt2;
-//     Alpha = NewAlpha;
-//     Beta = NewBeta;
-//   }
-//   void applyX() { std::swap(Alpha, Beta); }
-//   void applyY() {
-//     auto NewAlpha = Beta * -1i;
-//     auto NewBeta = Alpha * 1i;
-//     Alpha = NewAlpha;
-//     Beta = NewBeta;
-//   }
-//   void applyZ() { Beta = -Beta; }
-//   void applyS() { Beta *= 1i; }
-// };
-
 struct Gate {
   Qubit C1, C2;
 
