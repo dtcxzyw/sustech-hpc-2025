@@ -1,0 +1,74 @@
+#include <complex>
+#include <cstddef>
+#include <cstdint>
+#include <omp.h>
+#include <vector>
+
+static constexpr double States[48][4] = {
+{% for state in states %}  {{ '{' }}{{ fp_map[state[1]] }}, {{ fp_map[state[2]] }}, {{ fp_map[state[3]] }}, {{ fp_map[state[4]] }}{{ '}' }},
+{% endfor %}
+};
+
+static constexpr uint32_t Base0 = 33;
+static constexpr uint32_t Base1 = 25;
+
+static constexpr uint32_t Trans[48][5] = {
+{% for mapping in mappings %}  {{ '{' }}{{ mapping[1] }}, {{ mapping[2] }}, {{ mapping[3] }}, {{ mapping[4] }}, {{ mapping[5] }}{{ '}' }},
+{% endfor %}
+};
+
+static uint32_t Trans128[48 * 128];
+
+struct Gate {
+  uint32_t C1, C2;
+
+  Gate() : C1{Base0}, C2{Base1} {}
+
+  void apply(std::complex<double> &Alpha, std::complex<double> &Beta) const {
+    std::complex<double> A00 = { States[C1][0], States[C1][1] };
+    std::complex<double> A01 = { States[C2][0], States[C2][1] };
+    std::complex<double> A10 = { States[C1][2], States[C1][3] };
+    std::complex<double> A11 = { States[C2][2], States[C2][3] };
+
+    auto NewAlpha = A00 * Alpha + A01 * Beta;
+    auto NewBeta = A10 * Alpha + A11 * Beta;
+    Alpha = NewAlpha;
+    Beta = NewBeta;
+  }
+};
+
+void simulate(size_t N, const char *Gates, std::complex<double> &Alpha,
+              std::complex<double> &Beta) {
+  int NumThreads = omp_get_max_threads();
+  size_t ChunkSize = N / NumThreads;
+
+  for (uint32_t I = 0; I < 48; ++I)
+    for (uint32_t J = 0; J < 5; ++J)
+        Trans128[I << 7 | ("HXYZS"[J])] = Trans[I][J] << 7;
+
+  std::vector<Gate> GatesVec(NumThreads);
+
+#pragma omp parallel for
+  for (int I = 0; I < NumThreads; ++I) {
+    size_t Start = I * ChunkSize;
+    const char *GatesPtr = Gates + Start;
+    uint32_t C1 = Base0 << 7;
+    uint32_t C2 = Base1 << 7;
+
+    for (size_t J = 0; J < ChunkSize; ++J) {
+      uint8_t GateKind = GatesPtr[J];
+      C1 = Trans128[C1 + GateKind];
+      C2 = Trans128[C2 + GateKind];
+    }
+
+    Gate G;
+    G.C1 = C1 >> 7;
+    G.C2 = C2 >> 7;
+    GatesVec[I] = G;
+  }
+
+  Alpha = 1.0;
+  Beta = 0.0;
+  for (auto &G : GatesVec)
+    G.apply(Alpha, Beta);
+}

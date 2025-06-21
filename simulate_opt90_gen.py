@@ -124,3 +124,7 @@ template = env.get_template("./simulate_opt90.jinja")
 with open(f"simulate_opt90.cpp", "w") as f:
     f.write(template.render(states=states, mappings=mappings, fp_map=fp_map))
 subprocess.run(["clang-format", "-i", "simulate_opt90.cpp"])
+template = env.get_template("./simulate_opt100.jinja")
+with open(f"simulate_opt100.cpp", "w") as f:
+    f.write(template.render(states=states, mappings=mappings, fp_map=fp_map))
+subprocess.run(["clang-format", "-i", "simulate_opt100.cpp"])
