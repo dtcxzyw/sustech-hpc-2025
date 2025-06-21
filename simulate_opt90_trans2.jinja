@@ -17,29 +17,15 @@ static constexpr uint32_t Trans[48][5] = {
 {% endfor %}
 };
 
+static uint32_t Trans2[48][25];
+
 struct Gate {
   uint32_t C1, C2;
 
   Gate() : C1{Base0}, C2{Base1} {}
-  void applyH() {
-    C1 = Trans[C1][0];
-    C2 = Trans[C2][0];
-  }
-  void applyX() {
-    C1 = Trans[C1][1];
-    C2 = Trans[C2][1];
-  }
-  void applyY() {
-    C1 = Trans[C1][2];
-    C2 = Trans[C2][2];   
-  }
-  void applyZ() {
-    C1 = Trans[C1][3];
-    C2 = Trans[C2][3];
-  }
-  void applyS() {
-    C1 = Trans[C1][4];
-    C2 = Trans[C2][4];
+  void apply(uint32_t Op) {
+    C1 = Trans2[C1][Op];
+    C2 = Trans2[C2][Op];
   }
 
   void apply(std::complex<double> &Alpha, std::complex<double> &Beta) const {
@@ -60,6 +46,11 @@ void simulate(size_t N, const char *Gates, std::complex<double> &Alpha,
   int NumThreads = omp_get_max_threads();
   size_t ChunkSize = N / NumThreads;
 
+  for (uint32_t I = 0; I < 48; ++I)
+    for (uint32_t J = 0; J < 5; ++J)
+      for (uint32_t K = 0; K < 5; ++K)
+        Trans2[I][J * 5 + K] = Trans[Trans[I][J]][K];
+
   std::vector<Gate> GatesVec(NumThreads);
 
 #pragma omp parallel for
@@ -67,26 +58,49 @@ void simulate(size_t N, const char *Gates, std::complex<double> &Alpha,
     Gate G;
     size_t Start = I * ChunkSize;
     const char *GatesPtr = Gates + Start;
-    for (size_t J = 0; J < ChunkSize; ++J) {
+    for (size_t J = 0; J + 2 <= ChunkSize; J += 2) {
+      uint32_t MappedIdx0 = 0;
       switch (GatesPtr[J]) {
       case 'H':
-        G.applyH();
+        MappedIdx0 = 0;
         break;
       case 'X':
-        G.applyX();
+        MappedIdx0 = 5;
         break;
       case 'Y':
-        G.applyY();
+        MappedIdx0 = 10;
         break;
       case 'Z':
-        G.applyZ();
+        MappedIdx0 = 15;
         break;
       case 'S':
-        G.applyS();
+        MappedIdx0 = 20;
         break;
       default:
         __builtin_unreachable(); // Invalid gate
       }
+      uint32_t MappedIdx1 = 0;
+      switch (GatesPtr[J + 1]) {
+      case 'H':
+        MappedIdx1 = 0;
+        break;
+      case 'X':
+        MappedIdx1 = 1;
+        break;
+      case 'Y':
+        MappedIdx1 = 2;
+        break;
+      case 'Z':
+        MappedIdx1 = 3;
+        break;
+      case 'S':
+        MappedIdx1 = 4;
+        break;
+      default:
+        __builtin_unreachable(); // Invalid gate
+      }
+
+      G.apply(MappedIdx0 + MappedIdx1);
     }
 
     GatesVec[I] = G;

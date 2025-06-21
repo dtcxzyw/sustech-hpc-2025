@@ -163,7 +163,6 @@ struct Gate {
 void simulate(size_t N, const char *Gates, std::complex<double> &Alpha,
               std::complex<double> &Beta) {
   int NumThreads = omp_get_max_threads();
-  std::cerr << "Using " << NumThreads << " threads.\n";
   size_t ChunkSize = N / NumThreads;
 
   std::vector<Gate> GatesVec(NumThreads);

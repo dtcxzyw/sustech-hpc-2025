@@ -1,0 +1,159 @@
+#include <complex>
+#include <cstddef>
+#include <cstdint>
+#include <omp.h>
+#include <vector>
+
+static constexpr double States[48][4] = {
+{% for state in states %}  {{ '{' }}{{ fp_map[state[1]] }}, {{ fp_map[state[2]] }}, {{ fp_map[state[3]] }}, {{ fp_map[state[4]] }}{{ '}' }},
+{% endfor %}
+};
+
+static constexpr uint32_t Base0 = 33;
+static constexpr uint32_t Base1 = 25;
+
+static constexpr uint32_t Trans[48][5] = {
+{% for mapping in mappings %}  {{ '{' }}{{ mapping[1] }}, {{ mapping[2] }}, {{ mapping[3] }}, {{ mapping[4] }}, {{ mapping[5] }}{{ '}' }},
+{% endfor %}
+};
+
+static uint32_t Trans2[48][25];
+static uint32_t Trans4[48][625];
+
+struct Gate {
+  uint32_t C1, C2;
+
+  Gate() : C1{Base0}, C2{Base1} {}
+  void apply(uint32_t Op) {
+    C1 = Trans4[C1][Op];
+    C2 = Trans4[C2][Op];
+  }
+
+  void apply(std::complex<double> &Alpha, std::complex<double> &Beta) const {
+    std::complex<double> A00 = { States[C1][0], States[C1][1] };
+    std::complex<double> A01 = { States[C2][0], States[C2][1] };
+    std::complex<double> A10 = { States[C1][2], States[C1][3] };
+    std::complex<double> A11 = { States[C2][2], States[C2][3] };
+
+    auto NewAlpha = A00 * Alpha + A01 * Beta;
+    auto NewBeta = A10 * Alpha + A11 * Beta;
+    Alpha = NewAlpha;
+    Beta = NewBeta;
+  }
+};
+
+void simulate(size_t N, const char *Gates, std::complex<double> &Alpha,
+              std::complex<double> &Beta) {
+  int NumThreads = omp_get_max_threads();
+  size_t ChunkSize = N / NumThreads;
+
+  for (uint32_t I = 0; I < 48; ++I)
+    for (uint32_t J = 0; J < 5; ++J)
+      for (uint32_t K = 0; K < 5; ++K)
+        Trans2[I][J * 5 + K] = Trans[Trans[I][J]][K];
+
+  for (uint32_t I = 0; I < 48; ++I)
+    for (uint32_t J = 0; J < 25; ++J)
+      for (uint32_t K = 0; K < 25; ++K)
+        Trans4[I][J * 25 + K] = Trans2[Trans2[I][J]][K];
+
+  std::vector<Gate> GatesVec(NumThreads);
+
+#pragma omp parallel for
+  for (int I = 0; I < NumThreads; ++I) {
+    Gate G;
+    size_t Start = I * ChunkSize;
+    const char *GatesPtr = Gates + Start;
+    for (size_t J = 0; J + 4 <= ChunkSize; J += 4) {
+      uint32_t MappedIdx0 = 0;
+      switch (GatesPtr[J]) {
+      case 'H':
+        MappedIdx0 = 0;
+        break;
+      case 'X':
+        MappedIdx0 = 125;
+        break;
+      case 'Y':
+        MappedIdx0 = 250;
+        break;
+      case 'Z':
+        MappedIdx0 = 375;
+        break;
+      case 'S':
+        MappedIdx0 = 500;
+        break;
+      default:
+        __builtin_unreachable(); // Invalid gate
+      }
+      uint32_t MappedIdx1 = 0;
+      switch (GatesPtr[J + 1]) {
+      case 'H':
+        MappedIdx1 = 0;
+        break;
+      case 'X':
+        MappedIdx1 = 25;
+        break;
+      case 'Y':
+        MappedIdx1 = 50;
+        break;
+      case 'Z':
+        MappedIdx1 = 75;
+        break;
+      case 'S':
+        MappedIdx1 = 100;
+        break;
+      default:
+        __builtin_unreachable(); // Invalid gate
+      }
+      uint32_t MappedIdx2 = 0;
+      switch (GatesPtr[J + 2]) {
+      case 'H':
+        MappedIdx2 = 0;
+        break;
+      case 'X':
+        MappedIdx2 = 5;
+        break;
+      case 'Y':
+        MappedIdx2 = 10;
+        break;
+      case 'Z':
+        MappedIdx2 = 15;
+        break;
+      case 'S':
+        MappedIdx2 = 20;
+        break;
+      default:
+        __builtin_unreachable(); // Invalid gate
+      }
+      uint32_t MappedIdx3 = 0;
+      switch (GatesPtr[J + 3]) {
+      case 'H':
+        MappedIdx3 = 0;
+        break;
+      case 'X':
+        MappedIdx3 = 1;
+        break;
+      case 'Y':
+        MappedIdx3 = 2;
+        break;
+      case 'Z':
+        MappedIdx3 = 3;
+        break;
+      case 'S':
+        MappedIdx3 = 4;
+        break;
+      default:
+        __builtin_unreachable(); // Invalid gate
+      }
+
+      G.apply(MappedIdx0 + MappedIdx1 + MappedIdx2 + MappedIdx3);
+    }
+
+    GatesVec[I] = G;
+  }
+
+  Alpha = 1.0;
+  Beta = 0.0;
+  for (auto &G : GatesVec)
+    G.apply(Alpha, Beta);
+}
