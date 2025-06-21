@@ -1,0 +1,100 @@
+#include <complex>
+#include <cstddef>
+#include <cstdint>
+#include <omp.h>
+#include <utility>
+#include <vector>
+
+static double States[48][4] = {
+{% for state in states %}  {{ '{' }}{{ fp_map[state[1]] }}, {{ fp_map[state[2]] }}, {{ fp_map[state[3]] }}, {{ fp_map[state[4]] }}{{ '}' }},
+{% endfor %}
+};
+
+static uint32_t Base0 = 33;
+static uint32_t Base1 = 25;
+
+static uint32_t Trans[48][5] = {
+{% for mapping in mappings %}  {{ '{' }}{{ mapping[1] }}, {{ mapping[2] }}, {{ mapping[3] }}, {{ mapping[4] }}, {{ mapping[5] }}{{ '}' }},
+{% endfor %}
+};
+
+struct Gate {
+  uint32_t C1, C2;
+
+  Gate() : C1{Base0}, C2{Base1} {}
+  void applyH() {
+    C1 = Trans[C1][0];
+    C2 = Trans[C2][0];
+  }
+  void applyX() {
+    C1 = Trans[C1][1];
+    C2 = Trans[C2][1];
+  }
+  void applyY() {
+    C1 = Trans[C1][2];
+    C2 = Trans[C2][2];   
+  }
+  void applyZ() {
+    C1 = Trans[C1][3];
+    C2 = Trans[C2][3];
+  }
+  void applyS() {
+    C1 = Trans[C1][4];
+    C2 = Trans[C2][4];
+  }
+
+  void apply(std::complex<double> &Alpha, std::complex<double> &Beta) const {
+    std::complex<double> A00 = { States[C1][0], States[C1][1] };
+    std::complex<double> A01 = { States[C2][0], States[C2][1] };
+    std::complex<double> A10 = { States[C1][2], States[C1][3] };
+    std::complex<double> A11 = { States[C2][2], States[C2][3] };
+
+    auto NewAlpha = A00 * Alpha + A01 * Beta;
+    auto NewBeta = A10 * Alpha + A11 * Beta;
+    Alpha = NewAlpha;
+    Beta = NewBeta;
+  }
+};
+
+void simulate(size_t N, const char *Gates, std::complex<double> &Alpha,
+              std::complex<double> &Beta) {
+  int NumThreads = omp_get_max_threads();
+  size_t ChunkSize = N / NumThreads;
+
+  std::vector<Gate> GatesVec(NumThreads);
+
+#pragma omp parallel for
+  for (int I = 0; I < NumThreads; ++I) {
+    Gate G;
+    size_t Start = I * ChunkSize;
+    const char *GatesPtr = Gates + Start;
+    for (size_t J = 0; J < ChunkSize; ++J) {
+      switch (GatesPtr[J]) {
+      case 'H':
+        G.applyH();
+        break;
+      case 'X':
+        G.applyX();
+        break;
+      case 'Y':
+        G.applyY();
+        break;
+      case 'Z':
+        G.applyZ();
+        break;
+      case 'S':
+        G.applyS();
+        break;
+      default:
+        __builtin_unreachable(); // Invalid gate
+      }
+    }
+
+    GatesVec[I] = G;
+  }
+
+  Alpha = 1.0;
+  Beta = 0.0;
+  for (auto &G : GatesVec)
+    G.apply(Alpha, Beta);
+}

@@ -19,23 +19,6 @@ struct Number {
 
   constexpr Number(int32_t V) : Val(V) {}
   Number operator-() const { return {-Val}; }
-  double square() const {
-    switch (Val) {
-    case Zero:
-      return 0.0;
-    case PosOne:
-    case NegOne:
-      return 1.0;
-    case PosInv2:
-    case NegInv2:
-      return 0.25;
-    case PosInvSqrt2:
-    case NegInvSqrt2:
-      return 0.5;
-    default:
-      __builtin_unreachable(); // Invalid value
-    }
-  }
 
   // Compute A / sqrt(2)
   Number divSqrt2() const {

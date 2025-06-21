@@ -1,9 +1,10 @@
 #include <complex>
 #include <cstddef>
 #include <cstdint>
-#include <omp.h>
+#include <iostream>
+#include <map>
+#include <set>
 #include <utility>
-#include <vector>
 
 struct Number {
   using NumberType = int32_t;
@@ -61,6 +62,15 @@ struct Complex {
   std::complex<double> materialize() const {
     return {Real.materialize(), Imag.materialize()};
   }
+
+  bool operator!=(const Complex &Other) const {
+    return Real.Val != Other.Real.Val || Imag.Val != Other.Imag.Val;
+  }
+  bool operator<(const Complex &Other) const {
+    if (Real.Val != Other.Real.Val)
+      return Real.Val < Other.Real.Val;
+    return Imag.Val < Other.Imag.Val;
+  }
 };
 
 struct Qubit {
@@ -84,6 +94,12 @@ struct Qubit {
   }
   void applyZ() { Beta = -Beta; }
   void applyS() { Beta = Beta.multiI(); }
+
+  bool operator<(const Qubit &RHS) const {
+    if (Alpha != RHS.Alpha)
+      return Alpha < RHS.Alpha;
+    return Beta < RHS.Beta;
+  }
 };
 
 struct Gate {
@@ -128,43 +144,58 @@ struct Gate {
 
 void simulate(size_t N, const char *Gates, std::complex<double> &Alpha,
               std::complex<double> &Beta) {
-  int NumThreads = omp_get_max_threads();
-  size_t ChunkSize = N / NumThreads;
-
-  std::vector<Gate> GatesVec(NumThreads);
-
-#pragma omp parallel for
-  for (int I = 0; I < NumThreads; ++I) {
-    Gate G;
-    size_t Start = I * ChunkSize;
-    const char *GatesPtr = Gates + Start;
-    for (size_t J = 0; J < ChunkSize; ++J) {
-      switch (GatesPtr[J]) {
-      case 'H':
-        G.applyH();
-        break;
-      case 'X':
-        G.applyX();
-        break;
-      case 'Y':
-        G.applyY();
-        break;
-      case 'Z':
-        G.applyZ();
-        break;
-      case 'S':
-        G.applyS();
-        break;
-      default:
-        __builtin_unreachable(); // Invalid gate
-      }
+  Gate G;
+  std::set<Qubit> Qubits;
+  for (size_t J = 0; J < N; ++J) {
+    switch (Gates[J]) {
+    case 'H':
+      G.applyH();
+      break;
+    case 'X':
+      G.applyX();
+      break;
+    case 'Y':
+      G.applyY();
+      break;
+    case 'Z':
+      G.applyZ();
+      break;
+    case 'S':
+      G.applyS();
+      break;
+    default:
+      __builtin_unreachable(); // Invalid gate
     }
-
-    GatesVec[I] = G;
+    Qubits.insert(G.C1);
+    Qubits.insert(G.C2);
   }
 
-  Alpha = 1.0;
-  Beta = 0.0;
-  for (auto &G : GatesVec)
-    G.apply(Alpha, Beta);
+  std::cout << "Qubits: " << Qubits.size() << "\n";
+  std::map<Qubit, uint32_t> QubitMap;
+  uint32_t Idx = 0;
+  for (const auto &Q : Qubits) {
+    QubitMap[Q] = Idx;
+    std::cout << Idx << ' ' << Q.Alpha.Real.Val << ' ' << Q.Alpha.Imag.Val
+              << ' ' << Q.Beta.Real.Val << ' ' << Q.Beta.Imag.Val << '\n';
+    ++Idx;
+  }
+
+  std::cout << '\n';
+  for (const auto &Q : Qubits) {
+    // std::cout << "Alpha: " << Q.Alpha.materialize()
+    //           << ", Beta: " << Q.Beta.materialize() << "\n";
+    auto Q1 = Q;
+    Q1.applyH();
+    auto Q2 = Q;
+    Q2.applyX();
+    auto Q3 = Q;
+    Q3.applyY();
+    auto Q4 = Q;
+    Q4.applyZ();
+    auto Q5 = Q;
+    Q5.applyS();
+    std::cout << QubitMap.at(Q) << ' ' << QubitMap.at(Q1) << ' '
+              << QubitMap.at(Q2) << ' ' << QubitMap.at(Q3) << ' '
+              << QubitMap.at(Q4) << ' ' << QubitMap.at(Q5) << '\n';
+  }
 }
