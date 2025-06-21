@@ -1,6 +1,7 @@
 #include <complex>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <omp.h>
 #include <vector>
 
@@ -55,8 +56,30 @@ void simulate(size_t N, const char *Gates, std::complex<double> &Alpha,
     uint32_t C1 = Base0 << 7;
     uint32_t C2 = Base1 << 7;
 
-    for (size_t J = 0; J < ChunkSize; ++J) {
-      uint8_t GateKind = GatesPtr[J];
+    for (size_t J = 0; J != ChunkSize; J += 8) {
+      uint64_t GateKind = 0;
+      memcpy(&GateKind, GatesPtr + J, sizeof(GateKind));
+      C1 = Trans128[C1 + (GateKind & 255)];
+      C2 = Trans128[C2 + (GateKind & 255)];
+      GateKind >>= 8;
+      C1 = Trans128[C1 + (GateKind & 255)];
+      C2 = Trans128[C2 + (GateKind & 255)];
+      GateKind >>= 8;
+      C1 = Trans128[C1 + (GateKind & 255)];
+      C2 = Trans128[C2 + (GateKind & 255)];
+      GateKind >>= 8;
+      C1 = Trans128[C1 + (GateKind & 255)];
+      C2 = Trans128[C2 + (GateKind & 255)];
+      GateKind >>= 8;
+      C1 = Trans128[C1 + (GateKind & 255)];
+      C2 = Trans128[C2 + (GateKind & 255)];
+      GateKind >>= 8;
+      C1 = Trans128[C1 + (GateKind & 255)];
+      C2 = Trans128[C2 + (GateKind & 255)];
+      GateKind >>= 8;
+      C1 = Trans128[C1 + (GateKind & 255)];
+      C2 = Trans128[C2 + (GateKind & 255)];
+      GateKind >>= 8;
       C1 = Trans128[C1 + GateKind];
       C2 = Trans128[C2 + GateKind];
     }
