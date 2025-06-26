@@ -20,8 +20,8 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  int N;
-  [[maybe_unused]] auto Res1 = fread(&N, sizeof(int), 1, file);
+  size_t N;
+  [[maybe_unused]] auto Res1 = fread(&N, sizeof(size_t), 1, file);
   std::vector<char> Gates(N);
   [[maybe_unused]] auto Res2 = fread(Gates.data(), sizeof(char), N, file);
   fclose(file);

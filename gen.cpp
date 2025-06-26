@@ -11,9 +11,9 @@ int main(int argc, char *argv[]) {
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> dis(0, 4);
-  int N = atoi(argv[1]);
+  size_t N = atoll(argv[1]);
   std::vector<char> Gates(N);
-  for (int i = 0; i < N; ++i) {
+  for (size_t i = 0; i < N; ++i) {
     int gate = dis(gen);
     Gates[i] = "HXYZS"[gate];
   }
@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  fwrite(&N, sizeof(int), 1, File);
+  fwrite(&N, sizeof(size_t), 1, File);
   fwrite(Gates.data(), sizeof(char), N, File);
   fclose(File);
 

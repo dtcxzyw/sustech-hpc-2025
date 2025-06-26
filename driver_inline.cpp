@@ -14,13 +14,13 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  int N = std::atoi(argv[1]);
-  int Seed = std::atoi(argv[2]);
+  size_t N = std::atoll(argv[1]);
+  size_t Seed = std::atoll(argv[2]);
 
   std::mt19937 Rng(Seed);
   std::uniform_int_distribution<int> Dist(0, 4);
   std::vector<char> Gates(N);
-  for (int i = 0; i < N; ++i) {
+  for (size_t i = 0; i < N; ++i) {
     int gate = Dist(Rng);
     Gates[i] = "HXYZS"[gate];
   }
